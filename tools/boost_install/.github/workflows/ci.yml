@@ -65,12 +65,12 @@ jobs:
 
           - lib: filesystem
             bopts: toolset=clang --layout=versioned install
-            copts: -DBoost_COMPILER=clang10
+            copts: -DBoost_COMPILER=clang11
             os: ubuntu-20.04
 
           - lib: filesystem
             bopts: toolset=clang --layout=versioned install
-            copts: -DBoost_COMPILER=-clang10
+            copts: -DBoost_COMPILER=-clang11
             os: ubuntu-20.04
 
           # shared
@@ -170,6 +170,11 @@ jobs:
 
           - lib: headers
             bopts: install
+            os: ubuntu-20.04
+
+          - lib: headers
+            bopts: stage
+            copts: -DUSE_STAGED_BOOST=ON
             os: ubuntu-20.04
 
           # other libraries

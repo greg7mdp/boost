@@ -1,12 +1,15 @@
 #!/bin/bash
 
 # Copyright 2020 Rene Rivera, Sam Darwin
+# Copyright 2021 Dmitry Arkhipov (grisumbras@gmail.com)
 # Distributed under the Boost Software License, Version 1.0.
 # (See accompanying file LICENSE.txt or copy at http://boost.org/LICENSE_1_0.txt)
 
 set -e
+export TRAVIS_OS_NAME=linux
 export TRAVIS_BUILD_DIR=$(pwd)
 export DRONE_BUILD_DIR=$(pwd)
+export DRONE_BRANCH=${DRONE_BRANCH:-$(echo $GITHUB_REF | cut -d/ -f3-)}
 export TRAVIS_BRANCH=$DRONE_BRANCH
 export TRAVIS_EVENT_TYPE=$DRONE_BUILD_EVENT
 export VCS_COMMIT_ID=$DRONE_COMMIT
@@ -40,7 +43,7 @@ common_install
 
 echo '==================================> SCRIPT'
 
-export B2_TARGETS="libs/$SELF/test libs/$SELF/example"
+export B2_TARGETS=${B2_TARGETS:-"libs/$SELF/test libs/$SELF/example"}
 $BOOST_ROOT/libs/$SELF/ci/travis/build.sh
 
 elif [ "$DRONE_JOB_BUILDTYPE" == "docs" ]; then
@@ -104,28 +107,6 @@ echo '==================================> SCRIPT'
 cd $BOOST_ROOT/libs/$SELF
 ci/travis/valgrind.sh
 
-elif [ "$DRONE_JOB_BUILDTYPE" == "standalone" ]; then
-
-echo '==================================> INSTALL'
-
-# Installing cmake with apt-get, so not required here:
-# pip install --user cmake
-
-echo '==================================> SCRIPT'
-
-export CXXFLAGS="-Wall -Wextra -std=c++17"
-mkdir __build_17
-cd __build_17
-cmake -DBOOST_JSON_STANDALONE=1 ..
-cmake --build .
-ctest -V .
-export CXXFLAGS="-Wall -Wextra -std=c++2a"
-mkdir ../__build_2a
-cd ../__build_2a
-cmake -DBOOST_JSON_STANDALONE=1 ..
-cmake --build .
-ctest -V .
-
 elif [ "$DRONE_JOB_BUILDTYPE" == "coverity" ]; then
 
 echo '==================================> INSTALL'
@@ -148,21 +129,27 @@ common_install
 echo '==================================> COMPILE'
 
 export CXXFLAGS="-Wall -Wextra -Werror"
+export CMAKE_OPTIONS=${CMAKE_OPTIONS:--DBUILD_TESTING=ON}
+export CMAKE_SHARED_LIBS=${CMAKE_SHARED_LIBS:-1}
 
 mkdir __build_static
 cd __build_static
-cmake -DBOOST_ENABLE_CMAKE=1 -DBUILD_TESTING=ON -DBoost_VERBOSE=1 \
+cmake -DBOOST_ENABLE_CMAKE=1 -DBoost_VERBOSE=1 ${CMAKE_OPTIONS} \
     -DBOOST_INCLUDE_LIBRARIES=$SELF ..
 cmake --build .
 ctest --output-on-failure -R boost_$SELF
 
 cd ..
 
+if [ "$CMAKE_SHARED_LIBS" = 1 ]; then
+
 mkdir __build_shared
 cd __build_shared
-cmake -DBOOST_ENABLE_CMAKE=1 -DBUILD_TESTING=ON -DBoost_VERBOSE=1 \
+cmake -DBOOST_ENABLE_CMAKE=1 -DBoost_VERBOSE=1 ${CMAKE_OPTIONS} \
     -DBOOST_INCLUDE_LIBRARIES=$SELF -DBUILD_SHARED_LIBS=ON ..
 cmake --build .
 ctest --output-on-failure -R boost_$SELF
+
+fi
 
 fi
